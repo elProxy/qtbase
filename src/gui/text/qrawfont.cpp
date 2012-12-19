@@ -47,6 +47,7 @@
 #include "qrawfont_p.h"
 
 #include <QtCore/qendian.h>
+#include "qfontengine_qpa_p.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -667,6 +668,28 @@ QRawFont QRawFont::fromFont(const QFont &font, QFontDatabase::WritingSystem writ
         rawFont.d.data()->hintingPreference = font.hintingPreference();
     }
     return rawFont;
+}
+
+/*!
+   Returns a QFont instance that will use the physical \a rawFonts provided
+   in place of a normal font query. The order of the \a rawFonts matters for
+   fallback when a glyph isn't found in a physical font. This can be useful
+   when creating several raw fonts from data and a fallback scenario is required.
+
+   Optionally, \a writingSystem can be provided as a hint so that QFont will use
+   sensible fallback fonts.
+*/
+QFont QRawFont::fontFromRawFonts(const QList<QRawFont> &rawFonts, QFontDatabase::WritingSystem writingSystem)
+{
+    int script = qt_script_for_writing_system(writingSystem);
+    QList<QFontEngine*> fallbackEnginesList;
+    fallbackEnginesList.reserve(rawFonts.size());
+    Q_FOREACH (const QRawFont &rawFont, rawFonts)
+        if (QFontEngine* fe = rawFont.d.data()->fontEngine)
+            fallbackEnginesList.append(fe);
+
+    Q_ASSERT(fallbackEnginesList.at(0));
+    QFontEngineMultiQPA::createMultiFontEngine(fallbackEnginesList, script);
 }
 
 /*!

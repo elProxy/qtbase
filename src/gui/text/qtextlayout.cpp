@@ -372,12 +372,15 @@ QTextLayout::~QTextLayout()
     Note that this only supports the needs of WebKit.
     Use of this function with e.g. QTextLayout::draw will result
     in undefined behaviour.
+
+    note: this is not ne
 */
+// FIXME: remove for Qt6 !
 void QTextLayout::setRawFont(const QRawFont &rawFont)
 {
-    d->rawFont = rawFont;
-    d->useRawFont = true;
-    d->resetFontEngineCache();
+    QList<QRawFont> fonts;
+    fonts.append(rawFont);
+    setFont(QRawFont::fontFromRawFonts(fonts));
 }
 #endif
 
@@ -390,9 +393,6 @@ void QTextLayout::setRawFont(const QRawFont &rawFont)
 void QTextLayout::setFont(const QFont &font)
 {
     d->fnt = font;
-#ifndef QT_NO_RAWFONT
-    d->useRawFont = false;
-#endif
     d->resetFontEngineCache();
 }
 

@@ -60,8 +60,6 @@
 #include <algorithm>
 #include <stdlib.h>
 
-#include "qfontengine_qpa_p.h"
-
 QT_BEGIN_NAMESPACE
 
 static const float smallCapsFraction = 0.7f;
@@ -908,14 +906,6 @@ void QTextEngine::shapeText(int item) const
 
     bool letterSpacingIsAbsolute;
     QFixed letterSpacing, wordSpacing;
-#ifndef QT_NO_RAWFONT
-    if (useRawFont) {
-        QTextCharFormat f = format(&si);
-        wordSpacing = QFixed::fromReal(f.fontWordSpacing());
-        letterSpacing = QFixed::fromReal(f.fontLetterSpacing());
-        letterSpacingIsAbsolute = true;
-    } else
-#endif
     {
         QFont font = this->font(si);
         letterSpacingIsAbsolute = font.d->letterSpacingIsAbsolute;
@@ -991,14 +981,7 @@ void QTextEngine::shapeTextWithHarfbuzz(int item) const
 
     QFontEngine *font = fontEngine(si, &si.ascent, &si.descent, &si.leading);
 
-    bool kerningEnabled;
-#ifndef QT_NO_RAWFONT
-    if (useRawFont) {
-        QTextCharFormat f = format(&si);
-        kerningEnabled = f.fontKerning();
-    } else
-#endif
-        kerningEnabled = this->font(si).d->kerning;
+    bool kerningEnabled = this->font(si).d->kerning;
 
     HB_ShaperItem entire_shaper_item;
     memset(&entire_shaper_item, 0, sizeof(entire_shaper_item));
@@ -1184,9 +1167,6 @@ static void init(QTextEngine *e)
     e->underlinePositions = 0;
     e->specialData = 0;
     e->stackEngine = false;
-#ifndef QT_NO_RAWFONT
-    e->useRawFont = false;
-#endif
 }
 
 QTextEngine::QTextEngine()
@@ -1428,20 +1408,6 @@ void QTextEngine::itemize() const
             ++it;
         }
     } else {
-#ifndef QT_NO_RAWFONT
-        if (useRawFont && specialData) {
-            int lastIndex = 0;
-            for (int i = 0; i < specialData->addFormats.size(); ++i) {
-                const QTextLayout::FormatRange &range = specialData->addFormats.at(i);
-                if (range.format.fontCapitalization()) {
-                    itemizer.generate(lastIndex, range.start - lastIndex, QFont::MixedCase);
-                    itemizer.generate(range.start, range.length, range.format.fontCapitalization());
-                    lastIndex = range.start + range.length;
-                }
-            }
-            itemizer.generate(lastIndex, length - lastIndex, QFont::MixedCase);
-        } else
-#endif
             itemizer.generate(0, length, static_cast<QFont::Capitalization> (fnt.d->capital));
     }
 
@@ -1704,30 +1670,6 @@ QFontEngine *QTextEngine::fontEngine(const QScriptItem &si, QFixed *ascent, QFix
     int script = si.analysis.script;
 
     QFont font = fnt;
-#ifndef QT_NO_RAWFONT
-    if (useRawFont && rawFont.isValid()) {
-        if (feCache.prevFontEngine && feCache.prevFontEngine->type() == QFontEngine::Multi && feCache.prevScript == script) {
-            engine = feCache.prevFontEngine;
-        } else {
-            engine = QFontEngineMultiQPA::createMultiFontEngine(rawFont.d->fontEngine, script);
-            feCache.prevFontEngine = engine;
-            feCache.prevScript = script;
-            engine->ref.ref();
-            if (feCache.prevScaledFontEngine)
-                releaseCachedFontEngine(feCache.prevScaledFontEngine);
-        }
-        if (si.analysis.flags & QFont::SmallCaps) {
-            if (feCache.prevScaledFontEngine) {
-                scaledEngine = feCache.prevScaledFontEngine;
-            } else {
-                QFontEngine *scEngine = rawFont.d->fontEngine->cloneWithSize(smallCapsFraction * rawFont.pixelSize());
-                scaledEngine = QFontEngineMultiQPA::createMultiFontEngine(scEngine, script);
-                scaledEngine->ref.ref();
-                feCache.prevScaledFontEngine = scaledEngine;
-            }
-        }
-    } else
-#endif
     {
         if (hasFormats()) {
             if (feCache.prevFontEngine && feCache.prevPosition == si.position && feCache.prevLength == length(&si) && feCache.prevScript == script) {

@@ -739,22 +739,27 @@ void QFontEngineMultiQPA::setFallbackFamiliesList(const QStringList &fallbacks)
   the same raw font over and over again, we want to cache the corresponding multi font engine
   as it may contain fallback font engines already.
 */
-QFontEngine* QFontEngineMultiQPA::createMultiFontEngine(QFontEngine *fe, int script)
+QFontEngine* QFontEngineMultiQPA::createMultiFontEngine(QList<QFontEngine *> engines, int script)
 {
     QFontEngine *engine = 0;
-    QFontCache::Key key(fe->fontDef, script, /*multi = */true);
+    QFontEngine primaryEngine = engines.at(0);
+    QFontCache::Key key(primaryEngine->fontDef, script, /*multi = */true);
     QFontCache *fc = QFontCache::instance();
-    //  We can't rely on the fontDef (and hence the cache Key)
-    //  alone to distinguish webfonts, since these should not be
-    //  accidentally shared, even if the resulting fontcache key
-    //  is strictly identical. See:
-    //   http://www.w3.org/TR/css3-fonts/#font-face-rule
-    const bool faceIsLocal = !fe->faceId().filename.isEmpty();
+
+    bool localTypeFacesOnly = true;
+    Q_FOREACH (QFontEngine*engine, engines)
+        if(engine->faceId().filename.isEmpty())
+            localTypeFacesOnly = false;
     QFontCache::EngineCache::Iterator it = fc->engineCache.find(key),
             end = fc->engineCache.end();
     while (it != end && it.key() == key) {
         QFontEngineMulti *cachedEngine = qobject_cast<QFontEngineMulti *>(it.value().data);
-        if (faceIsLocal || (cachedEngine && fe == cachedEngine->engine(0))) {
+        bool match = localTypeFacesOnly;
+        if (cachedEngine && cachedEngine->engines.size() <= engines.size()
+                && cachedEngine->engine(engines.size() - 1) == engines.last()) {
+
+        }
+        if (match) {
             engine = cachedEngine;
             fc->updateHitCountAndTimeStamp(it.value());
             break;
@@ -762,7 +767,7 @@ QFontEngine* QFontEngineMultiQPA::createMultiFontEngine(QFontEngine *fe, int scr
         it++;
     }
     if (!engine) {
-        engine = QGuiApplicationPrivate::instance()->platformIntegration()->fontDatabase()->fontEngineMulti(fe, QUnicodeTables::Script(script));
+        engine = QGuiApplicationPrivate::instance()->platformIntegration()->fontDatabase()->fontEngineMulti(primaryEngine, QUnicodeTables::Script(script));
         QFontCache::instance()->insertEngine(key, engine, /* insertMulti */ !faceIsLocal);
     }
     Q_ASSERT(engine);

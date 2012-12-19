@@ -250,7 +250,7 @@ public:
     QFontEngineMultiQPA(QFontEngine *fe, int script);
 
     void loadEngine(int at);
-    static QFontEngine* createMultiFontEngine(QFontEngine *fe, int script);
+    static QFontEngine* createMultiFontEngine(QList<QFontEngine*> engines, int script);
 
     int fallbackFamilyCount() const { return fallbackFamilies.size(); }
     QString fallbackFamilyAt(int at) const { return fallbackFamilies.at(at); }
@@ -264,6 +264,7 @@ private:
     mutable QStringList fallbackFamilies;
     int script;
     mutable bool fallbacksQueried;
+    mutable int fallbacksOffset;
 };
 
 QT_END_NAMESPACE

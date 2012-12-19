@@ -136,6 +136,8 @@ public:
 
     static QRawFont fromFont(const QFont &font,
                              QFontDatabase::WritingSystem writingSystem = QFontDatabase::Any);
+    static QFont fontFromRawFonts(const QList<QRawFont> &rawFonts,
+                                  QFontDatabase::WritingSystem writingSystem = QFontDatabase::Any);
 
 private:
     friend class QRawFontPrivate;
